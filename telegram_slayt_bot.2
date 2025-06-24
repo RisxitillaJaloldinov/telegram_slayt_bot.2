@@ -1,0 +1,80 @@
+import telebot
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+
+# === Ma’lumotlaringiz ===
+BOT_TOKEN = "7711925257:AAEI3afb1xAM0K96TIT1Rp5lnNO7M_Ypf8k"
+ADMIN_ID = 6420624987  # Sizning (Risxitilla) Telegram ID'ingiz
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# Foydalanuvchi holati va tili
+user_state = {}
+user_lang = {}
+
+# Til tanlash menyusi
+def language_buttons():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(
+        KeyboardButton("🇺🇿 O‘zbekcha"),
+        KeyboardButton("🇬🇧 English"),
+        KeyboardButton("🇷🇺 Русский")
+    )
+    return markup
+
+# Boshlanish (start) komandasi
+@bot.message_handler(commands=['start'])
+def start_handler(message):
+    bot.send_message(
+        message.chat.id,
+        "Assalomu alaykum!\nIltimos, tilni tanlang:",
+        reply_markup=language_buttons()
+    )
+    user_state[message.chat.id] = "select_language"
+
+# Til tanlaganidan keyin
+@bot.message_handler(func=lambda message: user_state.get(message.chat.id) == "select_language")
+def language_selected(message):
+    lang = message.text
+    if lang.startswith("🇺🇿"):
+        user_lang[message.chat.id] = "uz"
+        bot.send_message(message.chat.id, "Iltimos, mavzu nomini kiriting:")
+    elif lang.startswith("🇬🇧"):
+        user_lang[message.chat.id] = "en"
+        bot.send_message(message.chat.id, "Please enter the topic name:")
+    elif lang.startswith("🇷🇺"):
+        user_lang[message.chat.id] = "ru"
+        bot.send_message(message.chat.id, "Пожалуйста, введите название темы:")
+    else:
+        bot.send_message(message.chat.id, "Iltimos, tugmalardan birini tanlang.")
+        return
+    user_state[message.chat.id] = "waiting_for_topic"
+
+# Mavzu yozilgandan keyin
+@bot.message_handler(func=lambda message: user_state.get(message.chat.id) == "waiting_for_topic")
+def topic_received(message):
+    topic = message.text
+    user_id = message.chat.id
+
+    # Foydalanuvchiga javob
+    bot.send_message(user_id, "✅ So‘rovingiz adminga jo‘natildi.\nIltimos, u bilan bog‘laning: @Risxitilla_7776")
+
+    # Foydalanuvchi ma’lumotlarini olish
+    username = message.from_user.username or 'username yo‘q'
+    first_name = message.from_user.first_name or ''
+    last_name = message.from_user.last_name or ''
+    full_name = (first_name + " " + last_name).strip()
+
+    # Admin (siz) uchun xabar
+    admin_msg = (
+        f"📥 Yangi so‘rov:\n"
+        f"👤 {full_name} (@{username})\n"
+        f"📝 Mavzu: {topic}"
+    )
+    bot.send_message(ADMIN_ID, admin_msg)
+
+    # Holatni tozalash
+    user_state[user_id] = None
+    user_lang[user_id] = None
+
+# Botni ishga tushirish
+bot.polling()
